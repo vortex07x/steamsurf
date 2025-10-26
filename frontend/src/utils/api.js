@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+// Use environment variable if available, fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper function to get auth token
 const getAuthToken = () => {
@@ -18,6 +19,7 @@ export const fetchVideos = async () => {
   try {
     const token = getAuthToken();
     console.log('🔍 API: Fetching videos with token:', token ? 'YES' : 'NO');
+    console.log('🔍 API: Using base URL:', API_BASE_URL);
     
     const response = await fetch(`${API_BASE_URL}/videos`, {
       headers: getAuthHeaders()

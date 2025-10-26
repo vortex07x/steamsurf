@@ -20,7 +20,7 @@ import connectDB from './config/database.js';
 import User from './models/User.js';
 import Video from './models/Video.js';
 import VideoInteraction from './models/VideoInteraction.js';
-import SavedVideo from './models/SavedVideo.js';  // ADD THIS
+import SavedVideo from './models/SavedVideo.js';
 
 dotenv.config();
 
@@ -49,11 +49,18 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || 'http://localhost:3000',
-  credentials: true
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
+// CORS Configuration - Allow all origins for now
+app.use(cors({
+  origin: '*', // Allow all origins
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -67,7 +74,12 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'StreamSurf API',
     version: '1.0.0',
-    status: 'running'
+    status: 'running',
+    endpoints: {
+      videos: '/api/videos',
+      auth: '/api/auth',
+      admin: '/api/admin'
+    }
   });
 });
 
@@ -77,6 +89,7 @@ app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  console.error('❌ Error:', err.message);
   console.error(err.stack);
   res.status(err.status || 500).json({
     success: false,
@@ -98,4 +111,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
+  console.log(`🌐 CORS: Allowing all origins`);
 });
