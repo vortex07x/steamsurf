@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, ThumbsUp, ThumbsDown, Eye } from 'lucide-react';
+import { Play, ThumbsUp, ThumbsDown, Eye, Lock } from 'lucide-react';
 import { formatDuration, formatViews } from '../utils/helpers';
 import { likeVideo, dislikeVideo } from '../utils/api';
 
@@ -162,7 +162,7 @@ const VideoCard = ({ video, onClick, user, onInteraction }) => {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Show for logged-in users */}
         {user && (
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <button
@@ -193,10 +193,13 @@ const VideoCard = ({ video, onClick, user, onInteraction }) => {
           </div>
         )}
 
-        {/* Login Prompt for Non-authenticated */}
+        {/* Login Prompt for Non-authenticated Users */}
         {!user && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <p className="text-xs text-white/50 italic">Login to like or dislike</p>
+            <div className="flex items-center gap-2 text-xs text-white/40 italic bg-white/5 border border-white/10 px-3 py-2 rounded">
+              <Lock size={12} />
+              <span>Login to like or dislike</span>
+            </div>
           </div>
         )}
       </div>

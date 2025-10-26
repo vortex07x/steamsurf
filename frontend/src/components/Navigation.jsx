@@ -84,11 +84,6 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
       setIsPrivateMode(!isPrivateMode);
       setUser({ ...user, mode: newMode });
       window.dispatchEvent(new CustomEvent('modeChanged', { detail: { mode: newMode } }));
-
-      if (newMode === 'public' && location.pathname === '/explore') {
-        setIsNavigating(true);
-        navigate('/');
-      }
     } catch (error) {
       console.error('Error updating mode:', error);
       alert('Failed to update mode. Please try again.');
@@ -96,11 +91,6 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
   };
 
   const handleSearchClick = () => {
-    if (user && !isPrivateMode) {
-      alert('Please switch to Private Mode to access the Explore page');
-      return;
-    }
-
     if (location.pathname !== '/explore') {
       setIsNavigating(true);
       navigate('/explore');
@@ -136,11 +126,6 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
   };
 
   const handleExploreClick = () => {
-    if (user && !isPrivateMode) {
-      alert('Please switch to Private Mode to access the Explore page');
-      return;
-    }
-
     if (location.pathname !== '/explore') {
       setIsNavigating(true);
     }
@@ -158,7 +143,6 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
 
   const handleDungeonClick = () => {
     if (!user) {
-      alert('Please login to access your Dungeon');
       return;
     }
 
@@ -209,13 +193,9 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
             <button
               onClick={handleExploreClick}
               className={`text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 relative group ${location.pathname === '/explore' ? 'text-white' : ''
-                } ${user && !isPrivateMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={user && !isPrivateMode}
+                }`}
             >
               Explore
-              {user && !isPrivateMode && (
-                <Lock className="w-3 h-3 inline-block ml-1" />
-              )}
               <span
                 className={`absolute bottom-0 left-0 h-0.5 bg-white transition-all duration-300 ${location.pathname === '/explore' ? 'w-full' : 'w-0 group-hover:w-full'
                   }`}
@@ -224,10 +204,19 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
 
             <button
               onClick={handleDungeonClick}
-              className="text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 relative group"
+              disabled={!user}
+              className={`text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 relative group flex items-center gap-2 ${
+                location.pathname === '/dungeon' ? 'text-white' : ''
+              } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={!user ? 'Login required to access Dungeon' : 'Your personal Dungeon'}
             >
               Dungeon
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></span>
+              {!user && <Lock className="w-3 h-3" />}
+              <span
+                className={`absolute bottom-0 left-0 h-0.5 bg-white transition-all duration-300 ${
+                  location.pathname === '/dungeon' ? 'w-full' : !user ? 'w-0' : 'w-0 group-hover:w-full'
+                }`}
+              ></span>
             </button>
 
             {user && user.role === 'admin' && (
@@ -249,15 +238,13 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
           <div className="hidden lg:flex items-center gap-6">
             <button
               onClick={handleSearchClick}
-              className={`text-white/60 hover:text-white transition-colors duration-300 ${user && !isPrivateMode ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              title={user && !isPrivateMode ? 'Switch to Private Mode to search' : 'Search videos'}
-              disabled={user && !isPrivateMode}
+              className="text-white/60 hover:text-white transition-colors duration-300"
+              title="Search videos"
             >
               <Search size={20} />
             </button>
 
-            {/* Mode Toggle - FIXED: Now shows Unlock when locked (private), Lock when unlocked (public) */}
+            {/* Mode Toggle */}
             {user && (
               <button
                 onClick={handleModeToggle}
@@ -301,10 +288,8 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
           <div className="lg:hidden flex items-center gap-4">
             <button
               onClick={handleSearchClick}
-              className={`text-white/60 hover:text-white transition-colors duration-300 ${user && !isPrivateMode ? 'opacity-50' : ''
-                }`}
-              title={user && !isPrivateMode ? 'Switch to Private Mode to search' : 'Search videos'}
-              disabled={user && !isPrivateMode}
+              className="text-white/60 hover:text-white transition-colors duration-300"
+              title="Search videos"
             >
               <Search size={20} />
             </button>
@@ -331,19 +316,21 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
 
               <button
                 onClick={handleExploreClick}
-                disabled={user && !isPrivateMode}
-                className={`text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 text-left flex items-center gap-2 ${location.pathname === '/explore' ? 'text-white' : ''
-                  } ${user && !isPrivateMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 text-left ${location.pathname === '/explore' ? 'text-white' : ''
+                  }`}
               >
                 Explore
-                {user && !isPrivateMode && <Lock className="w-3 h-3" />}
               </button>
 
               <button
                 onClick={handleDungeonClick}
-                className="text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 text-left"
+                disabled={!user}
+                className={`text-white/80 hover:text-white text-sm uppercase tracking-widest font-medium transition-colors duration-300 text-left flex items-center gap-2 ${
+                  location.pathname === '/dungeon' ? 'text-white' : ''
+                } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Dungeon
+                {!user && <Lock className="w-3 h-3" />}
               </button>
 
               {user && user.role === 'admin' && (
@@ -356,7 +343,7 @@ const Navigation = ({ onSearchClick, user, setUser }) => {
                 </button>
               )}
 
-              {/* Mode Toggle Mobile - FIXED */}
+              {/* Mode Toggle Mobile */}
               {user && (
                 <button
                   onClick={handleModeToggle}

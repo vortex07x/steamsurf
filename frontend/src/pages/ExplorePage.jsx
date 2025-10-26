@@ -18,28 +18,36 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
   const [categories, setCategories] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [isPrivateMode, setIsPrivateMode] = useState(user?.mode === 'private');
   const navigate = useNavigate();
 
-  // Check if user has access (must be logged in and in private mode)
-  const hasAccess = user && user.mode === 'private';
-
-  // Redirect if no access
+  // Update mode when user changes
   useEffect(() => {
-    if (user && user.mode === 'public') {
-      navigate('/');
+    if (user) {
+      setIsPrivateMode(user.mode === 'private');
+    } else {
+      setIsPrivateMode(true); // Default to private for logged-out users (show videos)
     }
-  }, [user, navigate]);
+  }, [user]);
+
+  // Listen for mode changes from Navigation
+  useEffect(() => {
+    const handleModeChange = (e) => {
+      setIsPrivateMode(e.detail.mode === 'private');
+    };
+
+    window.addEventListener('modeChanged', handleModeChange);
+    return () => window.removeEventListener('modeChanged', handleModeChange);
+  }, []);
 
   // Load tags on mount
   useEffect(() => {
-    if (hasAccess) {
-      loadTags();
-    }
-  }, [hasAccess]);
+    loadTags();
+  }, []);
 
   // Update filtered videos when videos prop changes
   useEffect(() => {
-    if (hasAccess && videos && videos.length > 0) {
+    if (videos && videos.length > 0) {
       // Normalize tags to lowercase for all videos
       const normalizedVideos = videos.map(video => ({
         ...video,
@@ -53,7 +61,7 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
 
       setFilteredVideos(normalizedVideos);
     }
-  }, [videos, hasAccess]);
+  }, [videos]);
 
   const loadTags = async () => {
     try {
@@ -66,7 +74,7 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
   };
 
   const handleVideoSelect = async (video) => {
-    // Increment view if user is logged in
+    // Increment view only if user is logged in
     if (user) {
       try {
         const result = await incrementVideoView(video.id);
@@ -107,7 +115,7 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
 
   // Filtering logic - runs whenever filters change
   useEffect(() => {
-    if (!hasAccess || !videos || videos.length === 0) return;
+    if (!videos || videos.length === 0) return;
 
     let result = videos.map(video => ({
       ...video,
@@ -162,62 +170,7 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
     }
 
     setFilteredVideos(result);
-  }, [searchQuery, selectedCategory, sortBy, videos, selectedTags, hasAccess]);
-
-  // Show locked page if no access
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        <Navigation
-          onSearchClick={() => { }}
-          user={user}
-          setUser={setUser}
-        />
-
-        <div className="min-h-screen flex items-center justify-center px-6">
-          <div className="text-center max-w-2xl">
-            <div className="mb-8 flex justify-center">
-              <svg className="w-32 h-32 text-white/20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            </div>
-
-            <h1
-              className="text-5xl md:text-7xl text-white mb-6 uppercase tracking-[0.3em] font-light"
-              style={{
-                fontFamily: "'Cinzel Decorative', 'Playfair Display', serif",
-                textShadow: '0 0 40px rgba(255,255,255,0.2)',
-              }}
-            >
-              Access Restricted
-            </h1>
-
-            <div className="h-px w-48 bg-gradient-to-r from-transparent via-purple-500 to-transparent mx-auto mb-8"></div>
-
-            <p className="text-white/60 text-xl mb-4">
-              {!user ? 'Please login to access the Explore page' : 'This page is only available in Private Mode'}
-            </p>
-
-            <p className="text-white/40 text-sm mb-8">
-              {!user
-                ? 'Create an account or sign in to unlock exclusive content'
-                : 'Switch to Private Mode using the toggle in the navigation to access all videos'}
-            </p>
-
-            <button
-              onClick={() => navigate('/')}
-              className="border-2 border-white text-white px-8 py-3 uppercase tracking-[0.3em] text-sm
-                       hover:bg-white hover:text-black transition-all duration-300"
-            >
-              Go to Home
-            </button>
-          </div>
-        </div>
-
-        <Footer user={user} setUser={setUser} />
-      </div>
-    );
-  }
+  }, [searchQuery, selectedCategory, sortBy, videos, selectedTags]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -226,6 +179,9 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
   if (error) {
     return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
   }
+
+  // Determine if videos should be shown
+  const shouldShowVideos = !user || isPrivateMode;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -252,101 +208,165 @@ const ExplorePage = ({ onVideoSelect, user, setUser, videos, onVideoUpdate }) =>
             <p className="text-white/60 text-lg max-w-2xl mx-auto">
               Discover our complete collection of videos. Search, filter, and find exactly what you're looking for.
             </p>
+            
+            {/* Login Notice for Non-authenticated Users */}
+            {!user && (
+              <div className="mt-6 max-w-2xl mx-auto">
+                <div className="bg-purple-600/10 border border-purple-500/30 rounded-lg px-6 py-4">
+                  <p className="text-purple-300 text-sm">
+                    <strong>Note:</strong> You're browsing as a guest. Login to like, dislike, and save videos.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Public Mode Warning for Logged-in Users */}
+            {user && !isPrivateMode && (
+              <div className="mt-6 max-w-2xl mx-auto">
+                <div className="bg-yellow-600/10 border border-yellow-500/30 rounded-lg px-6 py-4">
+                  <p className="text-yellow-300 text-sm">
+                    <strong>Safe Mode Active:</strong> Videos are hidden. Switch to Private Mode to unlock the vault.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* COMBINED SEARCH & FILTER BAR */}
-          <SearchFilterBar
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            categories={categories}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            allTags={allTags}
-            selectedTags={selectedTags}
-            onToggleTag={toggleTag}
-            onClearAllTags={clearAllTags}
-          />
+          {/* COMBINED SEARCH & FILTER BAR - Only show when videos are visible */}
+          {shouldShowVideos && (
+            <SearchFilterBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              categories={categories}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              allTags={allTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTag}
+              onClearAllTags={clearAllTags}
+            />
+          )}
         </div>
       </div>
 
-      {/* Video Grid Section */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">
-        {/* Results Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="text-white/60 text-sm uppercase tracking-wider">
-            {filteredVideos.length} {filteredVideos.length === 1 ? 'Video' : 'Videos'} Found
+      {/* Video Grid Section OR Locked Message */}
+      {shouldShowVideos ? (
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20">
+          {/* Results Header */}
+          <div className="mb-8 flex items-center justify-between">
+            <div className="text-white/60 text-sm uppercase tracking-wider">
+              {filteredVideos.length} {filteredVideos.length === 1 ? 'Video' : 'Videos'} Found
+            </div>
+
+            {/* Active Filters Indicator */}
+            {(selectedTags.length > 0 || selectedCategory !== 'All' || searchQuery) && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-white/40">Active filters:</span>
+                {selectedCategory !== 'All' && (
+                  <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
+                    {selectedCategory}
+                  </span>
+                )}
+                {selectedTags.length > 0 && (
+                  <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
+                    {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''}
+                  </span>
+                )}
+                {searchQuery && (
+                  <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
+                    Search: "{searchQuery.substring(0, 20)}{searchQuery.length > 20 ? '...' : ''}"
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Active Filters Indicator */}
-          {(selectedTags.length > 0 || selectedCategory !== 'All' || searchQuery) && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-white/40">Active filters:</span>
-              {selectedCategory !== 'All' && (
-                <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
-                  {selectedCategory}
-                </span>
+          {/* No Results */}
+          {filteredVideos.length === 0 ? (
+            <div className="text-center py-20">
+              <svg className="w-24 h-24 mx-auto mb-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <p className="text-white/60 text-xl mb-2">No videos found</p>
+              <p className="text-white/40 text-sm mb-6">Try adjusting your search, filters, or tags</p>
+              {(searchQuery || selectedCategory !== 'All' || selectedTags.length > 0) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('All');
+                    setSortBy('latest');
+                    setSelectedTags([]);
+                  }}
+                  className="px-6 py-3 bg-purple-600 text-white hover:bg-purple-700 transition-colors uppercase tracking-wider text-sm font-medium"
+                >
+                  Clear All Filters
+                </button>
               )}
-              {selectedTags.length > 0 && (
-                <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
-                  {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''}
-                </span>
-              )}
-              {searchQuery && (
-                <span className="px-2 py-1 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs">
-                  Search: "{searchQuery.substring(0, 20)}{searchQuery.length > 20 ? '...' : ''}"
-                </span>
-              )}
+            </div>
+          ) : (
+            /* Video Grid */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredVideos.map((video, index) => (
+                <div
+                  key={video.id}
+                  className="opacity-0 animate-fadeIn"
+                  style={{
+                    animationDelay: `${index * 50}ms`,
+                    animationFillMode: 'forwards'
+                  }}
+                >
+                  <VideoCard
+                    video={video}
+                    onClick={handleVideoSelect}
+                    user={user}
+                    onInteraction={handleInteraction}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
+      ) : (
+        /* Public Mode - Locked Vault Message */
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-20 min-h-[60vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="mb-8 flex justify-center">
+              <svg className="w-32 h-32 text-white/20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+            </div>
 
-        {/* No Results */}
-        {filteredVideos.length === 0 ? (
-          <div className="text-center py-20">
-            <svg className="w-24 h-24 mx-auto mb-6 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <p className="text-white/60 text-xl mb-2">No videos found</p>
-            <p className="text-white/40 text-sm mb-6">Try adjusting your search, filters, or tags</p>
-            {(searchQuery || selectedCategory !== 'All' || selectedTags.length > 0) && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('All');
-                  setSortBy('latest');
-                  setSelectedTags([]);
-                }}
-                className="px-6 py-3 bg-purple-600 text-white hover:bg-purple-700 transition-colors uppercase tracking-wider text-sm font-medium"
-              >
-                Clear All Filters
-              </button>
-            )}
+            <h2
+              className="text-5xl md:text-7xl text-white mb-6 uppercase tracking-[0.3em] font-light"
+              style={{
+                fontFamily: "'Cinzel Decorative', 'Playfair Display', serif",
+                textShadow: '0 0 40px rgba(255,255,255,0.2)',
+              }}
+            >
+              Safe Mode
+            </h2>
+
+            <div className="h-px w-48 bg-gradient-to-r from-transparent via-purple-500 to-transparent mx-auto mb-8"></div>
+
+            <p className="text-white/60 text-xl mb-4 max-w-2xl mx-auto">
+              The vault is sealed. All videos are hidden for your safety.
+            </p>
+
+            <p className="text-white/40 text-sm mb-8 max-w-md mx-auto">
+              Switch to Private Mode using the toggle in the navigation to unlock exclusive content and explore the full collection.
+            </p>
+
+            <div className="inline-flex items-center gap-3 px-6 py-3 border border-purple-500/30 bg-purple-600/10 text-purple-300 text-sm uppercase tracking-wider">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Click the lock icon above to unlock</span>
+            </div>
           </div>
-        ) : (
-          /* Video Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredVideos.map((video, index) => (
-              <div
-                key={video.id}
-                className="opacity-0 animate-fadeIn"
-                style={{
-                  animationDelay: `${index * 50}ms`,
-                  animationFillMode: 'forwards'
-                }}
-              >
-                <VideoCard
-                  video={video}
-                  onClick={handleVideoSelect}
-                  user={user}
-                  onInteraction={handleInteraction}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <Footer user={user} setUser={setUser} />
     </div>
