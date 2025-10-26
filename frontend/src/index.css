@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  body {
+    @apply bg-black text-white font-sans;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+
+  /* Smooth scroll behavior for the entire app */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Page transition fade effect */
+  .page-transition-enter {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .page-transition-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 500ms ease-in-out, transform 500ms ease-in-out;
+  }
+
+  .page-transition-exit {
+    opacity: 1;
+  }
+
+  .page-transition-exit-active {
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-white text-black px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-all duration-300 hover:bg-white/90 hover:scale-105;
+  }
+
+  .input-primary {
+    @apply bg-white/5 border border-white/20 text-white rounded-none px-4 py-3 focus:outline-none focus:border-white/40 transition-all placeholder:text-white/40;
+  }
+
+  .card {
+    @apply bg-white/5 backdrop-blur-sm overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:bg-white/10 border border-white/10;
+  }
+
+  .nav-link {
+    @apply text-white/80 hover:text-white text-sm uppercase tracking-widest transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent;
+  }
+
+  .glow-white {
+    @apply shadow-[0_0_30px_rgba(255, 255, 255, 0.3)];
+  }
+
+  /* Fade-in animation for form fields */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
