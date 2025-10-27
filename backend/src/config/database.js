@@ -3,13 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+// Use DATABASE_URL if available (Render provides this), otherwise use individual params
+const databaseUrl = process.env.DATABASE_URL;
+
+let sequelize;
+
+if (databaseUrl) {
+  // Using connection string (recommended for Render)
+  sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
@@ -19,26 +20,47 @@ const sequelize = new Sequelize(
       idle: 10000
     },
     dialectOptions: {
-      // SSL is required for Supabase connections
-      ssl: process.env.NODE_ENV === 'production' || process.env.DB_HOST?.includes('supabase.com')
-        ? {
-            require: true,
-            rejectUnauthorized: false
-          }
-        : false
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
     }
-  }
-);
+  });
+} else {
+  // Fallback to individual parameters
+  sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
+    {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      dialect: 'postgres',
+      logging: process.env.NODE_ENV === 'development' ? console.log : false,
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      },
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      }
+    }
+  );
+}
 
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database Connected successfully');
-    console.log(`📍 Connected to: ${process.env.DB_HOST}`);
+    console.log(`📍 Connected to: ${process.env.DB_HOST || 'Supabase'}`);
     
     // Sync all models
-    // Use { alter: true } for development (modifies tables)
-    // Use { force: false } for production (doesn't drop tables)
+    // Use { alter: false } for production to avoid accidental changes
     const syncOptions = process.env.NODE_ENV === 'production' 
       ? { alter: false } 
       : { alter: true };

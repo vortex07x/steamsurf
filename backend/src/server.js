@@ -38,7 +38,7 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('📁 Created uploads directory');
 }
 
-// Connect to Database (this will also sync SavedVideo table automatically)
+// Connect to Database
 connectDB();
 
 // Rate limiting
@@ -53,9 +53,22 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS Configuration - Allow all origins for now
+// CORS Configuration
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000'];
+
 app.use(cors({
-  origin: '*', // Allow all origins
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -69,12 +82,21 @@ app.use('/api/', limiter);
 // Serve static files (uploaded videos/thumbnails)
 app.use('/uploads', express.static(uploadsDir));
 
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.get('/', (req, res) => {
   res.json({ 
     message: 'StreamSurf API',
     version: '1.0.0',
     status: 'running',
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
       videos: '/api/videos',
       auth: '/api/auth',
@@ -107,9 +129,9 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
-  console.log(`🌐 CORS: Allowing all origins`);
+  console.log(`🌐 CORS Origins: ${allowedOrigins.join(', ')}`);
 });
