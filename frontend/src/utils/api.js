@@ -12,6 +12,42 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// ============= HEALTH CHECK API =============
+
+// Check if backend is awake
+export const checkBackendHealth = async () => {
+  const startTime = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`, {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache',
+      }
+    });
+
+    clearTimeout(timeoutId);
+    const responseTime = Date.now() - startTime;
+
+    return {
+      isAwake: response.ok,
+      responseTime,
+      isColdStart: responseTime > 5000 // Consider cold start if > 5 seconds
+    };
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    console.error('Health check failed:', error);
+    return {
+      isAwake: false,
+      responseTime,
+      isColdStart: responseTime > 5000,
+      error: error.message
+    };
+  }
+};
+
 // ============= VIDEO APIs =============
 
 // Fetch all videos

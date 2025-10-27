@@ -4,7 +4,8 @@ import HeroSection from '../components/HeroSection';
 import Footer from '../components/Footer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
-import { fetchVideos } from '../utils/api';
+import ColdStartLoader from '../components/ColdStartLoader';
+import { fetchVideos, checkBackendHealth } from '../utils/api';
 
 const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
   const [videos, setVideos] = useState([]);
@@ -15,7 +16,9 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
   const [isPrivateMode, setIsPrivateMode] = useState(user?.mode === 'private');
   const [videoError, setVideoError] = useState(false);
   const [showNavToggle, setShowNavToggle] = useState(false);
+  const [isServerWaking, setIsServerWaking] = useState(false);
   const heroToggleRef = useRef(null);
+  const healthCheckDone = useRef(false);
 
   // Update mode when user changes
   useEffect(() => {
@@ -36,8 +39,59 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
     return () => window.removeEventListener('modeChanged', handleModeChange);
   }, []);
 
+  // Health check and load videos
   useEffect(() => {
-    loadVideos();
+    const initializeApp = async () => {
+      if (healthCheckDone.current) return;
+      healthCheckDone.current = true;
+
+      try {
+        // Check backend health first
+        console.log('🏥 Checking backend health...');
+        const healthStatus = await checkBackendHealth();
+
+        console.log('🏥 Health status:', healthStatus);
+
+        // If cold start detected, show loader
+        if (healthStatus.isColdStart || !healthStatus.isAwake) {
+          console.log('🥶 Cold start detected! Showing loader...');
+          setIsServerWaking(true);
+
+          // Keep checking until server is awake
+          let attempts = 0;
+          const maxAttempts = 20; // Max 20 attempts (about 60 seconds)
+
+          const checkInterval = setInterval(async () => {
+            attempts++;
+            console.log(`🔄 Health check attempt ${attempts}/${maxAttempts}...`);
+
+            const status = await checkBackendHealth();
+
+            if (status.isAwake && !status.isColdStart) {
+              console.log('✅ Server is awake!');
+              clearInterval(checkInterval);
+              setIsServerWaking(false);
+              loadVideos();
+            } else if (attempts >= maxAttempts) {
+              console.log('⏰ Max attempts reached, proceeding anyway...');
+              clearInterval(checkInterval);
+              setIsServerWaking(false);
+              loadVideos();
+            }
+          }, 3000); // Check every 3 seconds
+        } else {
+          // Server is already awake, load videos directly
+          console.log('✅ Server is awake, loading videos...');
+          loadVideos();
+        }
+      } catch (err) {
+        console.error('❌ Health check failed:', err);
+        // Proceed to load videos anyway
+        loadVideos();
+      }
+    };
+
+    initializeApp();
 
     const handleScroll = () => {
       setScrollY(window.scrollY);
@@ -75,6 +129,11 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
     }
   };
 
+  // Show cold start loader
+  if (isServerWaking) {
+    return <ColdStartLoader isWakingUp={isServerWaking} />;
+  }
+
   if (loading || authLoading) {
     return <LoadingSpinner />;
   }
@@ -104,6 +163,7 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
         user={user}
         setUser={setUser}
         heroToggleRef={heroToggleRef}
+        isServerWaking={isServerWaking}
       />
 
       {/* Featured Video Section - Simplified showcase only */}
@@ -133,8 +193,8 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
 
             {/* Large Cinematic Video Card - Showcase Only */}
             <div className="max-w-[1400px] mx-auto">
-              <div 
-                className="relative overflow-hidden group rounded-none sm:rounded-lg cursor-pointer" 
+              <div
+                className="relative overflow-hidden group rounded-none sm:rounded-lg cursor-pointer"
                 style={{ aspectRatio: '16/9' }}
                 onClick={() => onVideoSelect(featuredVideo)}
               >
@@ -198,7 +258,7 @@ const HomePage = ({ onVideoSelect, user, setUser, authLoading }) => {
                   <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent opacity-90" />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80 opacity-85" />
                   <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-transparent to-black/70 opacity-80" />
-                  
+
                   {/* Enhanced Vignette Effect */}
                   <div
                     className="absolute inset-0"

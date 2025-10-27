@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { updateUserMode } from '../utils/api';
 
-const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggleRef }) => {
+const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggleRef, isServerWaking }) => {
   const [scrollY, setScrollY] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -43,39 +43,54 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
     }
   };
 
+  // Calculate opacity for fade out effect during server wake up
+  const contentOpacity = isServerWaking ? 0 : Math.max(0, 1 - scrollY / 500);
+  const contentTransform = isServerWaking ? 'scale(0.95)' : 'none';
+
   return (
     <div className="relative h-screen w-full overflow-hidden">
       {/* Hero Image with Parallax Effect */}
       <div 
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-100"
+        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
         style={{
           backgroundImage: 'url(https://images.unsplash.com/photo-1574267432553-4b4628081c31?q=80&w=2031&auto=format&fit=crop)',
-          transform: `translateY(${scrollY * 0.5}px)`,
-          filter: 'grayscale(100%) contrast(1.1)',
+          transform: `translateY(${scrollY * 0.5}px) scale(${isServerWaking ? 1.05 : 1})`,
+          filter: `grayscale(100%) contrast(1.1) blur(${isServerWaking ? '8px' : '0px'})`,
+          opacity: isServerWaking ? 0.3 : 1,
         }}
       />
       
       {/* Dark Overlay - Gradient from transparent to black */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black" />
+      <div 
+        className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black transition-opacity duration-700"
+        style={{ opacity: isServerWaking ? 0.95 : 1 }}
+      />
       
       {/* Vignette Effect */}
-      <div className="absolute inset-0" 
-           style={{
-             background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%)'
-           }} 
+      <div 
+        className="absolute inset-0 transition-opacity duration-700" 
+        style={{
+          background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.8) 100%)',
+          opacity: isServerWaking ? 0.5 : 1,
+        }} 
       />
 
       {/* Content Container */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-6">
+      <div 
+        className="relative z-10 h-full flex flex-col items-center justify-center px-6 transition-all duration-700"
+        style={{
+          opacity: contentOpacity,
+          transform: `translateY(${scrollY * 0.3}px) ${contentTransform}`,
+          pointerEvents: isServerWaking ? 'none' : 'auto',
+        }}
+      >
         {/* Main Heading */}
         <h1 
-          className="text-5xl md:text-7xl lg:text-8xl font-bold text-white text-center mb-8"
+          className="text-5xl md:text-7xl lg:text-8xl font-bold text-white text-center mb-8 transition-all duration-700"
           style={{
             fontFamily: "'Cinzel Decorative', 'Playfair Display', serif",
             textShadow: '0 0 40px rgba(255,255,255,0.3)',
             letterSpacing: '0.05em',
-            opacity: Math.max(0, 1 - scrollY / 500),
-            transform: `translateY(${scrollY * 0.3}px)`,
           }}
         >
           STREAM<span className="text-purple-500">SURF</span>
@@ -83,11 +98,7 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
 
         {/* Subtitle */}
         <p 
-          className="text-white/70 text-lg md:text-xl text-center max-w-2xl mb-12"
-          style={{
-            opacity: Math.max(0, 1 - scrollY / 500),
-            transform: `translateY(${scrollY * 0.3}px)`,
-          }}
+          className="text-white/70 text-lg md:text-xl text-center max-w-2xl mb-12 transition-all duration-700"
         >
           Experience the ultimate video collection. Dark. Elegant. Powerful.
         </p>
@@ -96,12 +107,10 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
         {!user && (
           <button 
             onClick={scrollToLogin}
+            disabled={isServerWaking}
             className="border-2 border-white text-white px-12 py-4 uppercase tracking-[0.3em] text-sm
-                     hover:bg-white hover:text-black transition-all duration-300 mb-8"
-            style={{
-              opacity: Math.max(0, 1 - scrollY / 500),
-              transform: `translateY(${scrollY * 0.3}px)`,
-            }}
+                     hover:bg-white hover:text-black transition-all duration-300 mb-8
+                     disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Enter The Vault
           </button>
@@ -111,11 +120,7 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
         {user && (
           <div 
             ref={heroToggleRef}
-            className="flex items-center gap-6"
-            style={{
-              opacity: Math.max(0, 1 - scrollY / 500),
-              transform: `translateY(${scrollY * 0.3}px)`,
-            }}
+            className="flex items-center gap-6 transition-all duration-700"
           >
             <span className="text-white/60 text-xs uppercase tracking-[0.2em] font-light">
               {isPrivateMode ? 'Private' : 'Public'}
@@ -123,11 +128,12 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
             
             <button
               onClick={toggleMode}
+              disabled={isServerWaking}
               className={`relative w-24 h-12 rounded-full transition-all duration-400 border-2 ${
                 isPrivateMode 
                   ? 'bg-purple-600/20 border-purple-500' 
                   : 'bg-white/5 border-white/30'
-              } cursor-pointer overflow-hidden`}
+              } cursor-pointer overflow-hidden disabled:opacity-30 disabled:cursor-not-allowed`}
             >
               {/* Background Glow Effect */}
               <div 
@@ -211,9 +217,10 @@ const HeroSection = ({ isPrivateMode, setIsPrivateMode, user, setUser, heroToggl
 
       {/* Scroll Indicator */}
       <div 
-        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce z-20"
+        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce z-20 transition-all duration-700"
         style={{
-          opacity: Math.max(0, 1 - scrollY / 300),
+          opacity: isServerWaking ? 0 : Math.max(0, 1 - scrollY / 300),
+          transform: `translateX(-50%) scale(${isServerWaking ? 0.8 : 1})`,
         }}
       >
         <div className="w-6 h-10 border-2 border-white/40 rounded-full flex items-start justify-center p-2">
